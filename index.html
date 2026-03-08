@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Igor Kakorin — Video Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400;1,600&family=DM+Mono:wght@300;400&family=Unbounded:wght@200;300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dim: rgba(201,168,76,0.15);
+    --bg: #0b0b0b;
+    --bg2: #111;
+    --text: #d4cfc7;
+    --muted: #6b6560;
+    --border: rgba(201,168,76,0.2);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-weight: 300;
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    position: fixed;
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: width 0.2s ease, height 0.2s ease, background 0.2s ease, border 0.2s ease;
+    opacity: 0;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 32px; height: 32px;
+    border: 1px solid rgba(201,168,76,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 48px;
+  }
+  nav::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(11,11,11,0.95) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    position: relative;
+    z-index: 1;
+    text-decoration: none;
+  }
+  .nav-links {
+    display: flex;
+    gap: 36px;
+    list-style: none;
+    position: relative;
+    z-index: 1;
+  }
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+  .nav-links a:hover { color: var(--gold); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 120px 48px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-bg-line {
+    position: absolute;
+    right: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 60vh;
+    background: linear-gradient(to bottom, transparent, var(--border), transparent);
+  }
+  .hero-tag {
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.2s;
+  }
+  .hero-tag::before {
+    content: '';
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+  }
+  .hero-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(72px, 10vw, 140px);
+    line-height: 0.9;
+    color: #fff;
+    letter-spacing: -0.02em;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 0.4s;
+  }
+  .hero-name span { color: var(--gold); display: block; }
+  .hero-sub {
+    margin-top: 40px;
+    max-width: 460px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.9;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.7s;
+  }
+  .hero-cta {
+    margin-top: 56px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.9s;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    background: var(--gold);
+    color: #0b0b0b;
+    text-decoration: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 400;
+    transition: background 0.3s, transform 0.2s;
+  }
+  .btn-primary:hover { background: var(--gold-light); transform: translateY(-2px); }
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    transition: border-color 0.3s, color 0.3s;
+  }
+  .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 48px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 1.2s;
+  }
+  .scroll-line {
+    width: 40px; height: 1px;
+    background: var(--muted);
+    position: relative;
+    overflow: hidden;
+  }
+  .scroll-line::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: var(--gold);
+    animation: scrollAnim 2s ease infinite;
+  }
+  @keyframes scrollAnim {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  /* SECTION base */
+  section { position: relative; z-index: 1; }
+  .section-label {
+    font-size: 14px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 60px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    max-width: 80px;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(36px, 5vw, 64px);
+    line-height: 1.1;
+    color: #fff;
+    margin-bottom: 24px;
+  }
+
+  /* WORK */
+  #work {
+    padding: 120px 48px;
+    border-top: 1px solid var(--border);
+  }
+  .work-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: end;
+    margin-bottom: 48px;
+  }
+  .work-desc { color: var(--muted); font-size: 14px; line-height: 1.9; }
+
+  /* WORK SECTIONS */
+  .work-section { margin-bottom: 64px; }
+  .work-section-label {
+    font-size: 14px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding: 16px 0;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* GRID */
+  .work-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+  .work-grid.reels-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .work-grid.youtube-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .youtube-grid .work-item {
+    aspect-ratio: 16/9;
+  }
+  .work-item {
+    position: relative;
+    aspect-ratio: 9/16;
+    background: #161616;
+    overflow: hidden;
+    cursor: none;
+  }
+  .work-item.wide {
+    grid-column: span 2;
+    aspect-ratio: 16/9;
+  }
+  .work-item-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 24px;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .work-item:hover .work-item-inner { opacity: 1; }
+  .work-item-bg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.6s ease;
+  }
+  .work-item:hover .work-item-bg { transform: scale(1.05); }
+  .work-tag {
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+  .work-item-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 20px;
+    color: #fff;
+  }
+  .work-placeholder-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #2a2a2a;
+    text-align: center;
+    padding: 16px;
+  }
+  .work-placeholder-text svg { opacity: 0.3; }
+  .work-placeholder-text span { font-size: 14px; letter-spacing: 0.1em; opacity: 0.4; }
+
+  .work-item-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .info-btn {
+    background: var(--gold);
+    border: none;
+    color: #0b0b0b;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    cursor: none;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    box-shadow: 0 2px 12px rgba(201,168,76,0.35);
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  }
+  .info-btn:hover {
+    background: var(--gold-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 18px rgba(201,168,76,0.5);
+  }
+  .info-btn svg { flex-shrink: 0; }
+
+  /* VOLUME SLIDER */
+  .volume-ctrl {
+    position: absolute;
+    bottom: 96px;
+    left: 16px;
+    width: 140px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .volume-ctrl.visible { opacity: 1; }
+  .volume-ctrl svg { flex-shrink: 0; color: rgba(255,255,255,0.7); }
+  .volume-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 2px;
+    outline: none;
+    cursor: none;
+  }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: none;
+  }
+  .volume-slider::-moz-range-thumb {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: none;
+    cursor: none;
+  }
+
+  /* INFO OVERLAY */
+  .info-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(11,11,11,0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 24px;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+  .info-overlay.open { transform: translateY(0); }
+  .info-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 14px;
+    cursor: none;
+    transition: color 0.2s;
+  }
+  .info-close:hover { color: var(--gold); }
+  .info-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 20px;
+    color: #fff;
+    margin-bottom: 20px;
+  }
+  .info-stats { display: flex; flex-direction: column; gap: 12px; }
+  .info-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(201,168,76,0.1);
+    padding-bottom: 10px;
+  }
+  .info-stat:last-child { border-bottom: none; }
+  .info-stat-label {
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .info-stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--gold);
+  }
+
+  .play-btn {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 52px; height: 52px;
+    background: rgba(201,168,76,0.9);
+    color: #0b0b0b;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    transition: background 0.3s, transform 0.3s, opacity 0.5s;
+  }
+  .work-item:hover .play-btn {
+    background: var(--gold);
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+  .play-btn.hidden { opacity: 0; }
+  .play-btn svg { margin-left: 3px; }
+
+  /* EXPAND */
+  .extra-grid {
+    overflow: hidden;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0 !important;
+    transition: max-height 0.6s ease, opacity 0.5s ease, margin-top 0.4s ease;
+  }
+  .extra-grid.open {
+    max-height: 2000px;
+    opacity: 1;
+    margin-top: 2px !important;
+  }
+  .expand-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 2px;
+    padding: 16px;
+    background: #161616;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: none;
+    transition: color 0.3s, background 0.3s;
+  }
+  .expand-btn:hover { color: var(--gold); background: #1a1a1a; }
+  .expand-btn svg { transition: transform 0.3s; }
+  .expand-btn.open svg { transform: rotate(180deg); }
+
+  /* FEATURED */
+  .featured-main-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .featured-main-grid .work-item {
+    aspect-ratio: 1/1;
+  }
+  .featured-extra-grid {
+    grid-template-columns: 1fr 1.6fr !important;
+    grid-auto-rows: 420px;
+  }
+  .featured-extra-grid .work-item {
+    aspect-ratio: unset;
+    height: 100%;
+  }
+  .featured-badge {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: var(--gold);
+    color: #0b0b0b;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    font-family: 'DM Mono', monospace;
+    z-index: 2;
+  }
+  .featured-note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 2px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .work-cta {
+    margin-top: 40px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 0.1em;
+  }
+  .work-cta a {
+    color: var(--gold);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    transition: border-color 0.3s;
+  }
+  .work-cta a:hover { border-color: var(--gold); }
+
+  /* ABOUT */
+  #about {
+    padding: 120px 48px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: start;
+  }
+  .about-bio {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 2;
+    margin-bottom: 32px;
+  }
+  .about-bio strong { color: var(--text); font-weight: 400; }
+  .skills-block { margin-bottom: 48px; }
+  .skills-label {
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .skills-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .skill-tag {
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    transition: border-color 0.3s, color 0.3s;
+  }
+  .skill-tag:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* EXPERIENCE */
+  #experience {
+    padding: 120px 48px;
+    border-top: 1px solid var(--border);
+  }
+  .exp-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 80px;
+    margin-top: 80px;
+  }
+  .exp-timeline { position: relative; }
+  .exp-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 8px; bottom: 8px;
+    width: 1px;
+    background: var(--border);
+  }
+  .exp-item {
+    padding-left: 24px;
+    margin-bottom: 48px;
+    position: relative;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .exp-item.visible { opacity: 1; transform: translateX(0); }
+  .exp-item::before {
+    content: '';
+    position: absolute;
+    left: -3px; top: 8px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: 2px solid var(--bg);
+  }
+  .exp-year { font-size: 14px; letter-spacing: 0.2em; color: var(--gold); margin-bottom: 8px; }
+  .exp-company {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .exp-role { font-size: 14px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+  .exp-desc-block { color: var(--muted); font-size: 14px; line-height: 1.9; }
+  .interest-block { margin-top: 48px; }
+  .interest-title {
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .interest-list { list-style: none; }
+  .interest-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(201,168,76,0.08);
+    color: var(--muted);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: color 0.3s;
+  }
+  .interest-list li::before { content: '—'; color: var(--gold); flex-shrink: 0; }
+  .interest-list li:hover { color: var(--text); }
+
+  /* CONTACT */
+  #contact {
+    padding: 120px 48px 80px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .contact-bg-text {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(80px, 15vw, 200px);
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(201,168,76,0.05);
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+  }
+  .contact-inner { position: relative; z-index: 1; }
+  .contact-email {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(24px, 4vw, 48px);
+    color: #fff;
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    transition: color 0.3s, border-color 0.3s;
+    display: inline-block;
+    margin: 32px 0;
+  }
+  .contact-email:hover { color: var(--gold); border-color: var(--gold); }
+  .contact-socials {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 16px;
+  }
+  .contact-socials a {
+    font-size: 14px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.3s;
+  }
+  .contact-socials a:hover { color: var(--gold); }
+
+  /* FOOTER */
+  footer {
+    padding: 24px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 14px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  .extra-grid.featured-row-mixed {
+    grid-template-columns: 16fr 9fr;
+  }
+  .featured-rows-wrapper { display: flex; flex-direction: column; gap: 2px; }
+  .featured-row-2sq {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+  .featured-row-2sq .work-item {
+    aspect-ratio: 1 / 1;
+  }
+  /* Row 3: 16:9 video + 1:1 placeholder.
+     Math: cols 16fr/9fr → video width=16/25W, height=9/25W; square width=9/25W, height=9/25W → equal ✓ */
+  .featured-row-mixed {
+    display: grid;
+    grid-template-columns: 16fr 9fr;
+    gap: 2px;
+    align-items: start;
+  }
+  .featured-row-mixed .work-item.video-horizontal {
+    aspect-ratio: 16 / 9;
+  }
+  .featured-row-mixed .work-item.sq-placeholder {
+    aspect-ratio: 1 / 1;
+  }
+
+  /* LIKES BADGE */
+  .likes-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    background: rgba(11,11,11,0.72);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    padding: 5px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 3;
+  }
+
+  /* COMING SOON overlay */
+  .coming-soon-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 10px;
+    text-align: center;
+    padding-bottom: 20px;
+  }
+  .coming-soon-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 30px;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+  }
+  .coming-soon-sub {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* INTRO OVERLAY */
+  #intro-overlay {
+    position: fixed; inset: 0; z-index: 100000;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #intro-ik {
+    will-change: transform;
+    display: flex;
+    align-items: baseline;
+    gap: 0.04em;
+  }
+  .intro-ltr {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(56px, 14vw, 136px);
+    color: rgba(201,168,76,0);
+    -webkit-text-stroke: 0.5px #c9a84c;
+    display: inline-block;
+    opacity: 0;
+    line-height: 1;
+  }
+  #intro-i-s {
+    clip-path: inset(100% 0 0 0);
+    animation:
+      introFadeIn 0.45s ease          forwards 0.3s,
+      introShowI  1.0s cubic-bezier(0.25,0.1,0.25,1) forwards 0.3s,
+      introFill   0.65s ease          forwards 1.1s;
+  }
+  #intro-k-s {
+    clip-path: inset(0 0 100% 0);
+    animation:
+      introFadeIn 0.45s ease          forwards 0.75s,
+      introShowK  1.0s cubic-bezier(0.25,0.1,0.25,1) forwards 0.75s,
+      introFill   0.65s ease          forwards 1.55s;
+  }
+  @keyframes introFadeIn { to { opacity: 1; } }
+  @keyframes introShowI  { to { clip-path: inset(0 0 0 0); } }
+  @keyframes introShowK  { to { clip-path: inset(0 0 0 0); } }
+  @keyframes introFill   { to { color: #c9a84c; } }
+  /* Pause hero animations until intro done */
+  .hero-tag, .hero-name, .hero-sub, .hero-cta, .scroll-hint {
+    animation-play-state: paused;
+  }
+  body.intro-done .hero-tag,
+  body.intro-done .hero-name,
+  body.intro-done .hero-sub,
+  body.intro-done .hero-cta,
+  body.intro-done .scroll-hint {
+    animation-play-state: running;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    nav { padding: 20px 24px; }
+    .hero { padding: 100px 24px 60px; }
+    .work-grid { grid-template-columns: 1fr 1fr; }
+    .work-grid.reels-grid { grid-template-columns: repeat(2, 1fr); }
+    .work-item.wide { grid-column: span 2; }
+    #about { grid-template-columns: 1fr; padding: 80px 24px; gap: 48px; }
+    #experience { padding: 80px 24px; }
+    .exp-grid { grid-template-columns: 1fr; gap: 40px; }
+    #work, #contact { padding: 80px 24px; }
+    footer { padding: 20px 24px; flex-direction: column; gap: 12px; text-align: center; }
+    .work-header { grid-template-columns: 1fr; }
+  }
+  /* MOBILE VIDEO MODAL */
+  .mob-modal {
+    position: fixed; inset: 0; z-index: 9500;
+    background: #000;
+    display: flex; flex-direction: column;
+    transform: translateY(110%);
+    visibility: hidden;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), visibility 0s 0.5s;
+    pointer-events: none;
+  }
+  .mob-modal.open {
+    transform: translateY(0);
+    visibility: visible;
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), visibility 0s 0s;
+    pointer-events: all;
+  }
+  .mob-modal-top-bar { display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 14px 16px 6px; }
+  .mob-modal-drag-bar { width: 64px; height: 5px; background: rgba(255,255,255,0.35); border-radius: 3px; pointer-events: none; }
+  .mob-modal-video-wrap { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  .mob-modal-video-wrap video { width: 100%; height: 100%; object-fit: contain; }
+  .mob-modal-controls {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+    background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 40%, transparent 100%);
+    padding: 32px 24px 40px;
+    pointer-events: all;
+  }
+  .mob-modal-tag { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+  .mob-modal-title { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 24px; color: #fff; margin-bottom: 16px; }
+  .mob-modal-actions { display: flex; align-items: center; gap: 14px; }
+  .mob-modal-playbtn {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--gold); color: #0b0b0b;
+    border: none; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background 0.2s; cursor: pointer;
+  }
+  .mob-modal-playbtn:active { background: var(--gold-light); }
+  .mob-stats-overlay {
+    position: absolute; inset: 0; background: rgba(11,11,11,0.95);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 24px; z-index: 12;
+    transform: translateY(100%);
+    transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+  .mob-stats-overlay.open { transform: translateY(0); }
+  .mob-stats-drag-bar { width: 64px; height: 5px; background: rgba(255,255,255,0.3); border-radius: 3px; margin: 0 auto 20px; pointer-events: none; }
+
+  @media (max-width: 600px) {
+    .hero-bg-line { right: 20px; }
+    /* Disable custom cursor on touch devices */
+    body { cursor: auto; }
+    .cursor, .cursor-ring { display: none; }
+
+    nav { padding: 16px 20px; }
+    .nav-links { display: none; }
+
+    .hero { padding: 80px 20px 60px; }
+
+    /* Buttons */
+    .btn-primary, .btn-ghost { padding: 12px 22px; font-size: 12px; letter-spacing: 0.1em; }
+    .hero-cta { flex-direction: column; align-items: flex-start; gap: 10px; }
+
+    /* Default grid: 1 col, 16:9 */
+    .work-grid { grid-template-columns: 1fr; }
+    .work-item { aspect-ratio: 16/9; }
+    .work-item.wide { grid-column: span 1; aspect-ratio: 16/9; }
+
+    /* Reels: 2 cols, keep 9:16 portrait */
+    .work-grid.reels-grid { grid-template-columns: repeat(2, 1fr); }
+    .reels-grid .work-item { aspect-ratio: 9/16; }
+
+    /* YouTube: 1 col */
+    .work-grid.youtube-grid { grid-template-columns: 1fr; }
+    .youtube-grid .work-item { aspect-ratio: 16/9; }
+
+    /* Extra / personal grids */
+    .extra-grid { grid-template-columns: 1fr 1fr !important; }
+
+    /* Personal projects: 1 per row, square */
+    .featured-row-2sq { grid-template-columns: 1fr !important; }
+    .featured-row-2sq .work-item { aspect-ratio: 1/1; }
+
+    /* Play button smaller on mobile thumbnails */
+    .play-btn { width: 36px; height: 36px; }
+    .play-btn svg { width: 14px; height: 14px; }
+
+    .featured-extra-grid { grid-template-columns: 1fr !important; grid-auto-rows: auto; }
+    .featured-extra-grid .work-item { aspect-ratio: 16/9; height: auto; }
+    .featured-row-mixed { grid-template-columns: 1fr !important; }
+    .featured-row-mixed .work-item.sq-placeholder { display: none; }
+
+    /* Video cards: disable pointer on video so tap goes to card */
+    .video-card video { pointer-events: none; }
+    /* Hide hover overlay on mobile — info shown in modal */
+    .video-card .work-item-inner { display: none; }
+
+    #work, #contact { padding: 60px 20px; }
+    #about { padding: 60px 20px; }
+    #experience { padding: 60px 20px; }
+    footer { padding: 16px 20px; flex-direction: column; gap: 10px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- INTRO OVERLAY -->
+<div id="intro-overlay">
+  <div id="intro-ik">
+    <span id="intro-i-s" class="intro-ltr">I</span>
+    <span id="intro-k-s" class="intro-ltr">K</span>
+  </div>
+</div>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#">IK</a>
+  <ul class="nav-links">
+    <li><a href="#work">Work</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-line"></div>
+  <div class="hero-tag">Video Editor & Reels Producer</div>
+  <h1 class="hero-name">
+    Igor<br>
+    <span>Kakorin</span>
+  </h1>
+  <p class="hero-sub">
+    Video editor — 2 years of professional experience in short-form content, motion design, and animation.
+  </p>
+  <div class="hero-cta">
+    <a href="#work" class="btn-primary">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      View Work
+    </a>
+    <a href="#contact" class="btn-ghost">Get in touch</a>
+  </div>
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    scroll
+  </div>
+</section>
+
+<!-- WORK -->
+<section id="work">
+  <div class="work-header reveal">
+    <div>
+      <h2 class="section-title">Cases</h2>
+    </div>
+    <p class="work-desc">
+      Short-form content is the priority — reels and brand videos. Also have YouTube projects and personal featured edits with 300K+ likes.
+    </p>
+  </div>
+
+  <!-- REELS -->
+  <div class="work-section reveal">
+    <div class="work-section-label">Reels</div>
+    <div class="work-grid reels-grid">
+      <div class="work-item video-card" style="cursor:none;"
+        onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+        <video
+          src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772021154/IMG_3245_zc6o6f.mp4"
+          poster="https://res.cloudinary.com/dyhz2lxuy/video/upload/so_0/v1772021154/IMG_3245_zc6o6f.jpg"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+          loop muted playsinline
+        ></video>
+        <div class="play-btn" onclick="toggleVideo(this)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="volume-ctrl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+        </div>
+        <div class="work-item-inner">
+          <div class="work-tag">Reels</div>
+          <div class="work-item-title-row">
+            <div class="work-item-title">Money Isn't Everything</div>
+            <button class="info-btn" onclick="toggleInfo(this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+              Stats
+            </button>
+          </div>
+        </div>
+        <div class="info-overlay">
+          <button class="info-close" onclick="toggleInfo(this)">✕</button>
+          <div class="coming-soon-body">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--gold);opacity:0.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="coming-soon-label">Coming Soon</div>
+            <div class="coming-soon-sub">Stats in progress</div>
+          </div>
+        </div>
+      </div>
+      <div class="work-item video-card" style="cursor:none;"
+        onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+        <video
+          src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772116529/2_unbnk1.mp4"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+          poster="https://res.cloudinary.com/dyhz2lxuy/image/upload/v1772430706/image_1772430775087_yy9jbj.webp" loop muted playsinline
+        ></video>
+        <div class="play-btn" onclick="toggleVideo(this)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="volume-ctrl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+        </div>
+        <div class="work-item-inner">
+          <div class="work-tag">Reels</div>
+          <div class="work-item-title-row">
+            <div class="work-item-title">Sugar Spikes</div>
+            <button class="info-btn" onclick="toggleInfo(this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+              Stats
+            </button>
+          </div>
+        </div>
+        <div class="info-overlay">
+          <button class="info-close" onclick="toggleInfo(this)">✕</button>
+          <div class="coming-soon-body">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--gold);opacity:0.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="coming-soon-label">Coming Soon</div>
+            <div class="coming-soon-sub">Stats in progress</div>
+          </div>
+        </div>
+      </div>
+      <div class="work-item video-card" style="cursor:none;"
+        onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+        <video
+          src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772117837/4new_l7y0p9.mp4"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+          poster="https://res.cloudinary.com/dyhz2lxuy/image/upload/v1772429963/4_salg8x.png" loop muted playsinline
+        ></video>
+        <div class="play-btn" onclick="toggleVideo(this)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="volume-ctrl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+        </div>
+        <div class="work-item-inner">
+          <div class="work-tag">Reels</div>
+          <div class="work-item-title-row">
+            <div class="work-item-title">Anti-Aging Meal</div>
+            <button class="info-btn" onclick="toggleInfo(this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+              Stats
+            </button>
+          </div>
+        </div>
+        <div class="info-overlay">
+          <button class="info-close" onclick="toggleInfo(this)">✕</button>
+          <div class="coming-soon-body">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--gold);opacity:0.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="coming-soon-label">Coming Soon</div>
+            <div class="coming-soon-sub">Stats in progress</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="work-item video-card" style="cursor:none;"
+        onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+        <video
+          src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772116543/3_kzmsam.mp4"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+          poster="https://res.cloudinary.com/dyhz2lxuy/image/upload/v1772430707/image_1772430714612_iyqlhm.webp" loop muted playsinline
+        ></video>
+        <div class="play-btn" onclick="toggleVideo(this)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="volume-ctrl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+        </div>
+        <div class="work-item-inner">
+          <div class="work-tag">Reels</div>
+          <div class="work-item-title-row">
+            <div class="work-item-title">Anti-Aging Genes</div>
+            <button class="info-btn" onclick="toggleInfo(this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+              Stats
+            </button>
+          </div>
+        </div>
+        <div class="info-overlay">
+          <button class="info-close" onclick="toggleInfo(this)">✕</button>
+          <div class="coming-soon-body">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--gold);opacity:0.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="coming-soon-label">Coming Soon</div>
+            <div class="coming-soon-sub">Stats in progress</div>
+          </div>
+        </div>
+      </div>
+        </div>
+    <div class="work-grid reels-grid extra-grid" id="reels-extra">
+      <div class="work-item video-card" style="cursor:none;"
+        onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+        <video
+          src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772116435/1_uignlp.mp4"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+          loop muted playsinline
+          poster="https://res.cloudinary.com/dyhz2lxuy/image/upload/v1772432009/image_1772432067896_zz6fdq.webp"></video>
+        <div class="play-btn" onclick="toggleVideo(this)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="volume-ctrl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+        </div>
+        <div class="work-item-inner">
+          <div class="work-tag">Reels</div>
+          <div class="work-item-title-row">
+            <div class="work-item-title">L-Carnosine</div>
+            <button class="info-btn" onclick="toggleInfo(this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+              Stats
+            </button>
+          </div>
+        </div>
+        <div class="info-overlay">
+          <button class="info-close" onclick="toggleInfo(this)">✕</button>
+          <div class="coming-soon-body">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--gold);opacity:0.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="coming-soon-label">Coming Soon</div>
+            <div class="coming-soon-sub">Stats in progress</div>
+          </div>
+        </div>
+      </div>
+      <div class="work-item video-card" style="cursor:none;"
+        onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+        <video
+          src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772118053/video_2025-10-26_19-18-07_hlmds4.mp4"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+          loop muted playsinline
+        ></video>
+        <div class="play-btn" onclick="toggleVideo(this)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="volume-ctrl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+        </div>
+        <div class="work-item-inner">
+          <div class="work-tag">Reels</div>
+          <div class="work-item-title-row">
+            <div class="work-item-title">Mistermittens</div>
+            <button class="info-btn" onclick="toggleInfo(this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+              Stats
+            </button>
+          </div>
+        </div>
+        <div class="info-overlay">
+          <button class="info-close" onclick="toggleInfo(this)">✕</button>
+          <div class="coming-soon-body">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--gold);opacity:0.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="coming-soon-label">Coming Soon</div>
+            <div class="coming-soon-sub">Stats in progress</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="expand-btn" id="reels-expand-btn" onclick="toggleExtra('reels')">
+      <span>Show more reels</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+
+  <!-- YOUTUBE -->
+  <div class="work-section reveal">
+    <div class="work-section-label">YouTube</div>
+    <div class="work-grid youtube-grid">
+      <div class="work-item video-card" onclick="window.open('https://youtu.be/i6YBEmuODDc','_blank')" data-yt-url="https://youtu.be/i6YBEmuODDc" style="cursor:none;">
+        <img src="https://img.youtube.com/vi/i6YBEmuODDc/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/i6YBEmuODDc/hqdefault.jpg'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+        <div class="play-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="work-item-inner"><div class="work-tag">Gaming</div><div class="work-item-title">Frado — FAVORITE Case Opening</div></div>
+      </div>
+      <div class="work-item video-card" onclick="window.open('https://youtu.be/6Ce4DDIipS4','_blank')" data-yt-url="https://youtu.be/6Ce4DDIipS4" style="cursor:none;">
+        <img src="https://img.youtube.com/vi/6Ce4DDIipS4/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/6Ce4DDIipS4/hqdefault.jpg'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+        <div class="play-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="work-item-inner"><div class="work-tag">Gaming</div><div class="work-item-title">Andreezl — 3 of EVERY Case</div></div>
+      </div>
+    </div>
+    <div class="work-grid extra-grid" id="youtube-extra">
+      <div class="work-item wide">
+        <div class="work-item-bg" style="font-size:80px; color:#1a1a1a; font-family:'Cormorant Garamond',serif; font-style:italic; opacity:0.2;">CS2</div>
+        <div class="work-placeholder-text">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>YouTube · 2023</span>
+        </div>
+        <div class="work-item-inner"><div class="work-tag">Gaming</div><div class="work-item-title">CS2 — Edit #03</div></div>
+      </div>
+      <div class="work-item">
+        <div class="work-placeholder-text">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>YouTube · 2023</span>
+        </div>
+        <div class="work-item-inner"><div class="work-tag">Gaming</div><div class="work-item-title">CS2 — Edit #04</div></div>
+      </div>
+    </div>
+    <button class="expand-btn" id="youtube-expand-btn" onclick="toggleExtra('youtube')" style="display:none;">
+      <span>Show more videos</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+
+  <!-- FEATURED -->
+  <div class="work-section reveal">
+    <div class="work-section-label">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:inline;vertical-align:middle;margin-right:6px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Featured — Personal Edits
+    </div>
+    <div class="featured-rows-wrapper">
+
+      <!-- Row 1: 2 square videos (#01, #02) -->
+      <div class="featured-row-2sq">
+        <div class="work-item video-card" style="cursor:none;"
+          onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+          <video src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772366182/3_iilrhi.mp4" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" poster="https://res.cloudinary.com/dyhz2lxuy/video/upload/so_0/v1772366182/3_iilrhi.jpg" loop muted playsinline></video>
+          <div class="play-btn" onclick="toggleVideo(this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="volume-ctrl">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+          </div>
+          <div class="likes-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            200K
+          </div>
+          <div class="work-item-inner">
+            <div class="work-tag">Featured</div>
+            <div class="work-item-title">JOJO Manga Animation</div>
+          </div>
+        </div>
+        <div class="work-item video-card" style="cursor:none;"
+          onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+          <video src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772366296/2_1_k5dppn.mp4" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" poster="https://res.cloudinary.com/dyhz2lxuy/video/upload/so_0/v1772366296/2_1_k5dppn.jpg" loop muted playsinline></video>
+          <div class="play-btn" onclick="toggleVideo(this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="volume-ctrl">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+          </div>
+          <div class="likes-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            10K
+          </div>
+          <div class="work-item-inner">
+            <div class="work-tag">Featured</div>
+            <div class="work-item-title">CS2 Edit</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: 1 square video (#03) + 1 square placeholder (#04) -->
+      <div class="featured-row-2sq">
+        <div class="work-item video-card" style="cursor:none;"
+          onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+          <video src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772366152/1_t8wxbb.mp4" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" poster="https://res.cloudinary.com/dyhz2lxuy/video/upload/so_0/v1772366152/1_t8wxbb.jpg" loop muted playsinline></video>
+          <div class="play-btn" onclick="toggleVideo(this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="volume-ctrl">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+          </div>
+          <div class="likes-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            350K
+          </div>
+          <div class="work-item-inner">
+            <div class="work-tag">Featured</div>
+            <div class="work-item-title">Lyric Edit</div>
+          </div>
+        </div>
+        <div class="work-item video-card" style="cursor:none;"
+          onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+          <video src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772366359/5_1_xdfr1o.mp4" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" poster="https://res.cloudinary.com/dyhz2lxuy/video/upload/so_0/v1772366359/5_1_xdfr1o.jpg" loop muted playsinline></video>
+          <div class="play-btn" onclick="toggleVideo(this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="volume-ctrl">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+          </div>
+          <div class="likes-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            400K
+          </div>
+          <div class="work-item-inner"><div class="work-tag">Featured</div><div class="work-item-title">Discord Animation</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-left reveal">
+    <div class="section-label">About</div>
+    <h2 class="section-title">Story.<br>Rhythm.</h2>
+    <p class="about-bio">
+      I'm Igor Kakorin — video editor with <strong>2 years of professional experience</strong> across lifestyle, health, and gaming content.
+    </p>
+    <p class="about-bio">
+      From raw footage to final delivery, I handle every stage of the process — editing, motion design, color grading. Focused on the result: precise, polished, and built to perform.
+    </p>
+    <p class="about-bio" style="color: var(--gold); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-top: 8px;">
+      English (B2) · Russian
+    </p>
+  </div>
+  <div class="about-right reveal">
+    <div class="skills-block">
+      <div class="skills-label">Tools</div>
+      <div class="skills-list">
+        <span class="skill-tag">Premiere Pro</span>
+        <span class="skill-tag">After Effects</span>
+        <span class="skill-tag">Photoshop</span>
+        <span class="skill-tag">Audition</span>
+        <span class="skill-tag">Blender</span>
+        <span class="skill-tag">Grok AI</span>
+        <span class="skill-tag">Sora</span>
+        <span class="skill-tag">Kling</span>
+        <span class="skill-tag">Claude Code</span>
+      </div>
+    </div>
+    <div class="skills-block">
+      <div class="skills-label">Expertise</div>
+      <div class="skills-list">
+        <span class="skill-tag">Video Editing</span>
+        <span class="skill-tag">Motion Design</span>
+        <span class="skill-tag">Color Grading</span>
+        <span class="skill-tag">Sound Design</span>
+        <span class="skill-tag">Animation</span>
+        <span class="skill-tag">Typography</span>
+        <span class="skill-tag">Storytelling</span>
+        <span class="skill-tag">Visual Effects</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXPERIENCE -->
+<section id="experience">
+  <div class="reveal">
+    <div class="section-label">Career</div>
+    <h2 class="section-title">Work<br>Experience</h2>
+  </div>
+  <div class="exp-grid">
+    <div class="exp-timeline">
+      <div class="exp-item reveal">
+        <div class="exp-year">2025 — 2026</div>
+        <div class="exp-company">BioVital</div>
+        <div class="exp-role">Senior Reels Editor</div>
+      </div>
+      <div class="exp-item reveal" style="transition-delay:0.15s">
+        <div class="exp-year">2024 — 2025</div>
+        <div class="exp-company">PokerDom</div>
+        <div class="exp-role">Reels Producer</div>
+      </div>
+      <div class="exp-item reveal" style="transition-delay:0.3s">
+        <div class="exp-year">2023 — 2024</div>
+        <div class="exp-company">TastyTeam</div>
+        <div class="exp-role">Senior Video Editor · Designer</div>
+      </div>
+      <div class="exp-item reveal" style="transition-delay:0.45s">
+        <div class="exp-year">2022</div>
+        <div class="exp-company">Freelance</div>
+        <div class="exp-role">Video Editor</div>
+      </div>
+    </div>
+    <div class="exp-desc-block reveal">
+      <p style="margin-bottom:24px;">
+        Started as a freelance video editor in 2022, steadily growing into senior roles across content studios and digital projects. Focused on short-form video and reels for social media.
+      </p>
+      <p style="margin-bottom:40px;">
+        At PokerDom handled reels production at a fast pace. At TastyTeam combined editing and design work, building a consistent visual style across content.
+      </p>
+      <div class="interest-block">
+        <div class="interest-title">Interests</div>
+        <ul class="interest-list">
+          <li>Film Making</li>
+          <li>Directing</li>
+          <li>3D Animation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="contact-bg-text">Let's work</div>
+  <div class="contact-inner reveal">
+    <div class="section-label" style="justify-content:center;">Contact</div>
+    <h2 class="section-title" style="font-size:clamp(32px,5vw,72px);">Let's make<br>something great</h2>
+    <a href="mailto:igor.kakorin75@gmail.com" class="contact-email">igor.kakorin75@gmail.com</a>
+    <div class="contact-socials">
+<a href="https://instagram.com/dovaka1" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
+        Instagram · @dovaka1
+      </a>
+      <a href="https://wa.me/79833479917" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        WhatsApp · @igor
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- MOBILE VIDEO MODAL -->
+<div class="mob-modal" id="mobModal">
+  <div class="mob-modal-top-bar">
+    <div class="mob-modal-drag-bar"></div>
+  </div>
+  <div class="mob-modal-video-wrap">
+    <video id="mobModalVideo" playsinline loop style="pointer-events:none;"></video>
+    <div id="mobVideoTap" style="position:absolute;inset:0;z-index:1;"></div>
+  </div>
+  <div class="mob-modal-controls">
+    <div class="mob-modal-tag" id="mobModalTag"></div>
+    <div class="mob-modal-title" id="mobModalTitle"></div>
+    <div class="mob-modal-actions">
+      <button class="mob-modal-playbtn" id="mobModalPlay">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <button class="info-btn" id="mobModalStats" style="cursor:pointer;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+        Stats
+      </button>
+    </div>
+  </div>
+  <div class="mob-stats-overlay" id="mobStatsOverlay">
+    <div class="mob-stats-drag-bar"></div>
+    <div class="coming-soon-body">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--gold);opacity:0.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div class="coming-soon-label">Coming Soon</div>
+      <div class="coming-soon-sub">Stats in progress</div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span>© 2026 Igor Kakorin</span>
+  <span style="letter-spacing:0.2em; text-transform:uppercase;">Video Editor & Reels Producer</span>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  function toggleInfo(el) {
+    const card = el.closest('.work-item');
+    const overlay = card.querySelector('.info-overlay');
+    overlay.classList.toggle('open');
+  }
+
+  // VIDEO PLAY/PAUSE
+  const btnTimers = new WeakMap();
+
+  function setVolume(slider) {
+    const video = slider.closest('.work-item').querySelector('video');
+    video.volume = slider.value;
+  }
+  function scheduleHide(btn) {
+    const card = btn.closest('.work-item');
+    const vol = card.querySelector('.volume-ctrl');
+    clearTimeout(btnTimers.get(btn));
+    btnTimers.set(btn, setTimeout(() => {
+      btn.classList.add('hidden');
+      if (vol) vol.classList.remove('visible');
+    }, 2000));
+  }
+  function showControls(card) {
+    const btn = card.querySelector('.play-btn');
+    const vol = card.querySelector('.volume-ctrl');
+    btn.classList.remove('hidden');
+    if (vol) vol.classList.add('visible');
+    scheduleHide(btn);
+  }
+  function hoverPlay(card) {
+    if (card.dataset.soundPlaying) return;
+    const video = card.querySelector('video');
+    video.muted = true;
+    video.play();
+  }
+  function hoverPause(card) {
+    if (card.dataset.soundPlaying) return;
+    const video = card.querySelector('video');
+    const btn = card.querySelector('.play-btn');
+    btn.classList.remove('hidden');
+    clearTimeout(btnTimers.get(btn));
+
+    const wasMuted = video.muted;
+    const savedVolume = video.volume;
+    const fadeDuration = 350;
+    const steps = 18;
+    const stepTime = fadeDuration / steps;
+
+    function finishPause() {
+      video.style.transition = 'opacity 0.3s ease';
+      video.style.opacity = '0';
+      setTimeout(() => {
+        video.pause();
+        video.volume = savedVolume;
+        video.load();
+        setTimeout(() => { video.style.opacity = '1'; }, 40);
+      }, 300);
+    }
+
+    if (!wasMuted && savedVolume > 0) {
+      let step = 0;
+      const fade = setInterval(() => {
+        step++;
+        video.volume = Math.max(0, savedVolume * (1 - step / steps));
+        if (step >= steps) { clearInterval(fade); finishPause(); }
+      }, stepTime);
+    } else {
+      finishPause();
+    }
+  }
+  function isMobileView() { return window.innerWidth <= 600; }
+
+  function toggleVideo(btn) {
+    if (isMobileView()) return; // handled by mobile modal
+    const card = btn.closest('.work-item');
+    const video = card.querySelector('video');
+    const vol = card.querySelector('.volume-ctrl');
+    if (!card.dataset.soundPlaying) {
+      document.querySelectorAll('.work-item[data-sound-playing]').forEach(other => {
+        if (other === card) return;
+        const ov = other.querySelector('video');
+        const ob = other.querySelector('.play-btn');
+        const ovol = other.querySelector('.volume-ctrl');
+        delete other.dataset.soundPlaying;
+        ov.pause(); ov.muted = true; ov.currentTime = 0;
+        ob.classList.remove('hidden');
+        if (ovol) ovol.classList.remove('visible');
+        clearTimeout(btnTimers.get(ob));
+        ob.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+      });
+      card.dataset.soundPlaying = '1';
+      video.muted = false;
+      const slider = card.querySelector('.volume-slider');
+      video.volume = slider ? parseFloat(slider.value) : 0.5;
+      video.play();
+      btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+      if (vol) vol.classList.add('visible');
+      scheduleHide(btn);
+    } else {
+      delete card.dataset.soundPlaying;
+      video.pause(); video.muted = true; video.currentTime = 0;
+      btn.classList.remove('hidden');
+      if (vol) vol.classList.remove('visible');
+      clearTimeout(btnTimers.get(btn));
+      btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+    }
+  }
+  document.querySelectorAll('.video-card').forEach(card => {
+    card.addEventListener('mousemove', () => {
+      if (!card.dataset.soundPlaying) return;
+      showControls(card);
+    });
+  });
+
+  // EXPAND
+  function toggleExtra(section) {
+    const extra = document.getElementById(section + '-extra');
+    const btn = document.getElementById(section + '-expand-btn');
+    const span = btn.querySelector('span');
+    const isOpen = extra.classList.contains('open');
+    extra.classList.toggle('open', !isOpen);
+    btn.classList.toggle('open', !isOpen);
+    if (section === 'reels') span.textContent = isOpen ? 'Show more reels' : 'Show less';
+    else if (section === 'youtube') span.textContent = isOpen ? 'Show more videos' : 'Show less';
+    else span.textContent = isOpen ? 'Show more' : 'Show less';
+  }
+
+  // CUSTOM CURSOR
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mx = 0, my = 0, rx = 0, ry = 0, started = false;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX;
+    my = e.clientY;
+    cursor.style.left = mx + 'px';
+    cursor.style.top = my + 'px';
+    if (!started) {
+      started = true;
+      rx = mx; ry = my;
+      cursor.style.opacity = '1';
+      ring.style.opacity = '1';
+    }
+  });
+
+  function animateRing() {
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    ring.style.left = rx + 'px';
+    ring.style.top = ry + 'px';
+    requestAnimationFrame(animateRing);
+  }
+  animateRing();
+
+  document.querySelectorAll('a, button, .work-item, .skill-tag').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      cursor.style.width = '20px';
+      cursor.style.height = '20px';
+      cursor.style.background = 'transparent';
+      cursor.style.border = '1px solid var(--gold)';
+    });
+    el.addEventListener('mouseleave', () => {
+      cursor.style.width = '8px';
+      cursor.style.height = '8px';
+      cursor.style.background = 'var(--gold)';
+      cursor.style.border = 'none';
+    });
+  });
+
+  // MOBILE VIDEO MODAL
+  const mobModal = document.getElementById('mobModal');
+  const mobModalVideo = document.getElementById('mobModalVideo');
+  const mobModalTag = document.getElementById('mobModalTag');
+  const mobModalTitle = document.getElementById('mobModalTitle');
+  const mobModalPlay = document.getElementById('mobModalPlay');
+  const mobModalStats = document.getElementById('mobModalStats');
+  const mobStatsOverlay = document.getElementById('mobStatsOverlay');
+  const mobVideoTap = document.getElementById('mobVideoTap');
+
+  function mobUpdatePlayBtn(playing) {
+    mobModalPlay.innerHTML = playing
+      ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>'
+      : '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+  }
+
+  function openMobModal(card) {
+    const vid = card.querySelector('video');
+    const tag = card.querySelector('.work-tag');
+    const title = card.querySelector('.work-item-title');
+    mobModalVideo.src = vid.getAttribute('src') || vid.currentSrc || '';
+    mobModalTag.textContent = tag ? tag.textContent.trim() : '';
+    mobModalTitle.textContent = title ? title.textContent.trim() : '';
+    mobModal.classList.add('open');
+    mobModalVideo.muted = false;
+    mobModalVideo.volume = 0.5;
+    mobModalVideo.currentTime = 0;
+    mobModalVideo.play().catch(() => {});
+    mobUpdatePlayBtn(true);
+  }
+
+  function closeMobModal() {
+    mobModal.classList.remove('open');
+    mobModalVideo.pause();
+    mobModalVideo.removeAttribute('src');
+    mobModalVideo.load();
+    mobStatsOverlay.classList.remove('open');
+    mobModal.style.transform = '';
+  }
+
+  // Block page scroll when modal is open
+  mobModal.addEventListener('touchmove', e => {
+    if (mobModal.classList.contains('open')) e.preventDefault();
+  }, { passive: false });
+
+  // Reliable tap handler: touchstart for instant response
+  function onTap(el, fn) {
+    el.addEventListener('touchstart', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      fn();
+    }, { passive: false });
+  }
+
+  onTap(mobModalPlay, () => {
+    if (mobModalVideo.paused) { mobModalVideo.play().catch(() => {}); mobUpdatePlayBtn(true); }
+    else { mobModalVideo.pause(); mobUpdatePlayBtn(false); }
+  });
+  onTap(mobModalStats, () => mobStatsOverlay.classList.add('open'));
+
+  // Swipe down to close stats overlay (capture — fires before children, stops at stats overlay)
+  let statsSwipeStartY = -1;
+  mobStatsOverlay.addEventListener('touchstart', e => {
+    statsSwipeStartY = e.touches[0].clientY;
+    e.stopPropagation(); // prevent modal swipe from firing
+  }, { capture: true, passive: true });
+  mobStatsOverlay.addEventListener('touchend', e => {
+    e.stopPropagation(); // prevent modal swipe from firing
+    if (statsSwipeStartY < 0) return;
+    const dy = e.changedTouches[0].clientY - statsSwipeStartY;
+    statsSwipeStartY = -1;
+    if (dy > 80) mobStatsOverlay.classList.remove('open');
+  }, { capture: true, passive: true });
+  onTap(mobVideoTap, () => {
+    if (mobModalVideo.paused) { mobModalVideo.play().catch(() => {}); mobUpdatePlayBtn(true); }
+    else { mobModalVideo.pause(); mobUpdatePlayBtn(false); }
+  });
+  // Swipe down to close modal (capture phase — fires before any child handlers)
+  let swipeStartY = -1;
+  mobModal.addEventListener('touchstart', e => {
+    if (!mobStatsOverlay.classList.contains('open')) {
+      swipeStartY = e.touches[0].clientY;
+    }
+  }, { capture: true, passive: true });
+  mobModal.addEventListener('touchend', e => {
+    if (!mobModal.classList.contains('open')) return;
+    if (mobStatsOverlay.classList.contains('open')) return;
+    if (swipeStartY < 0) { swipeStartY = -1; return; }
+    const dy = e.changedTouches[0].clientY - swipeStartY;
+    swipeStartY = -1;
+    if (dy > 80) closeMobModal();
+  }, { capture: true, passive: true });
+
+  // Card tap: open modal on first touch (touchend, skip if scrolled)
+  document.querySelectorAll('.video-card').forEach(card => {
+    let tapStartY = 0;
+    card.addEventListener('touchstart', e => { tapStartY = e.touches[0].clientY; }, { passive: true });
+    card.addEventListener('touchend', e => {
+      if (!isMobileView()) return;
+      if (Math.abs(e.changedTouches[0].clientY - tapStartY) > 8) return; // was a scroll
+      e.preventDefault();
+      if (card.dataset.ytUrl) {
+        window.open(card.dataset.ytUrl, '_blank');
+      } else {
+        openMobModal(card);
+      }
+    }, { passive: false });
+  });
+
+  // INTRO OVERLAY
+  (function(){
+    var navLogo = document.querySelector('.nav-logo');
+    var overlay = document.getElementById('intro-overlay');
+    var ikWrap  = document.getElementById('intro-ik');
+    var iSpan   = document.getElementById('intro-i-s');
+
+    navLogo.style.opacity = '0';
+
+    // FLIP: K fill ends at 1.55 + 0.65 = 2.2s, hold 0.3s → 2.5s
+    setTimeout(function() {
+      var navRect  = navLogo.getBoundingClientRect();
+      var wrapRect = ikWrap.getBoundingClientRect();
+      var navFS    = parseFloat(window.getComputedStyle(navLogo).fontSize);
+      var introFS  = parseFloat(window.getComputedStyle(iSpan).fontSize);
+      var scale    = navFS / introFS;
+      var dx = navRect.left + navRect.width  / 2 - (wrapRect.left + wrapRect.width  / 2);
+      var dy = navRect.top  + navRect.height / 2 - (wrapRect.top  + wrapRect.height / 2);
+
+      ikWrap.style.transition = 'transform 0.7s cubic-bezier(0.4,0,0.2,1)';
+      ikWrap.style.transform  = 'translate(' + dx + 'px,' + dy + 'px) scale(' + scale + ')';
+
+      setTimeout(function() {
+        navLogo.style.transition = 'opacity 0.3s ease';
+        navLogo.style.opacity    = '1';
+        overlay.style.transition = 'opacity 0.55s ease';
+        overlay.style.opacity    = '0';
+        document.body.classList.add('intro-done');
+        setTimeout(function() { overlay.remove(); }, 560);
+      }, 700);
+    }, 2500);
+  })();
+
+  // SCROLL REVEAL
+  const reveals = document.querySelectorAll('.reveal, .exp-item');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.classList.add('visible');
+    });
+  }, { threshold: 0, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(el => observer.observe(el));
+  // Fallback: show all after 1.5s
+  setTimeout(() => { reveals.forEach(el => el.classList.add('visible')); }, 1500);
+</script>
+</body>
+</html>
