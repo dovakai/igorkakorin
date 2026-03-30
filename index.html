@@ -1209,6 +1209,41 @@
       <div class="work-item video-card" style="cursor:none;"
         onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
         <video
+          src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1774888646/fa_k3xdb5.mp4"
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
+          poster="https://res.cloudinary.com/dyhz2lxuy/video/upload/so_0/v1774888646/fa_k3xdb5.jpg" loop muted playsinline
+        ></video>
+        <div class="play-btn" onclick="toggleVideo(this)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="volume-ctrl">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.5" oninput="setVolume(this)">
+        </div>
+        <div class="work-item-inner">
+          <div class="work-tag">Reels</div>
+          <div class="work-item-title-row">
+            <div class="work-item-title">Real Estate AI Generation</div>
+            <button class="info-btn" onclick="toggleInfo(this)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8" stroke-width="3" stroke-linecap="round"/><line x1="12" y1="12" x2="12" y2="16"/></svg>
+              Stats
+            </button>
+          </div>
+        </div>
+        <div class="info-overlay">
+          <button class="info-close" onclick="toggleInfo(this)">✕</button>
+          <div class="coming-soon-body">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="color:var(--gold);opacity:0.6"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="coming-soon-label">Coming Soon</div>
+            <div class="coming-soon-sub">Stats in progress</div>
+          </div>
+        </div>
+      </div>
+        </div>
+    <div class="work-grid reels-grid extra-grid" id="reels-extra">
+      <div class="work-item video-card" style="cursor:none;"
+        onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
+        <video
           src="https://res.cloudinary.com/dyhz2lxuy/video/upload/f_auto,q_auto/v1772116543/3_kzmsam.mp4"
           style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"
           poster="https://res.cloudinary.com/dyhz2lxuy/image/upload/v1772430707/image_1772430714612_iyqlhm.webp" loop muted playsinline
@@ -1239,8 +1274,6 @@
           </div>
         </div>
       </div>
-        </div>
-    <div class="work-grid reels-grid extra-grid" id="reels-extra">
       <div class="work-item video-card" style="cursor:none;"
         onmouseenter="hoverPlay(this)" onmouseleave="hoverPause(this)">
         <video
